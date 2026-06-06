@@ -1,0 +1,41 @@
+name: Auto Scrape FootyStream
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ "scrape.py", ".github/workflows/scrape.yml" ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run scraper
+        run: python scrape.py
+
+      - name: Commit matches.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain matches.json)" ]; then
+            git add matches.json
+            git commit -m "auto: update matches $(date -u +%FT%TZ)"
+            git push
+          else
+            echo "No changes."
+          fi
